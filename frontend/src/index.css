@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: #0A0E27;
+  color: #ffffff;
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0A0E27;
+}
+::-webkit-scrollbar-thumb {
+  background: #D4AF37;
+  border-radius: 3px;
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-gold-400 hover:bg-gold-500 text-navy-900 font-semibold px-8 py-3 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg shadow-gold-400/20;
+  }
+  .btn-outline {
+    @apply border-2 border-gold-400 text-gold-400 hover:bg-gold-400 hover:text-navy-900 font-semibold px-8 py-3 rounded-lg transition-all duration-300;
+  }
+  .card {
+    @apply bg-navy-800 border border-gray-700/30 rounded-2xl p-8 shadow-xl backdrop-blur-sm;
+  }
+  .section-title {
+    @apply text-4xl md:text-5xl font-heading font-bold text-center mb-4;
+  }
+  .section-subtitle {
+    @apply text-gray-400 text-center text-lg mb-12 max-w-2xl mx-auto;
+  }
+  .nav-link {
+    @apply text-gray-300 hover:text-gold-400 transition-colors duration-200 text-sm font-medium;
+  }
+  .gradient-text {
+    @apply bg-gradient-to-r from-gold-400 to-yellow-300 bg-clip-text text-transparent;
+  }
+}

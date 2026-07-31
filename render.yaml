@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: pro-funding-backend
+    env: node
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && node server.js
+    envVars:
+      - key: NODE_VERSION
+        value: 20.12.0
