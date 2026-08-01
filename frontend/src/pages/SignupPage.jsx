@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserPlus, User, Mail, Lock, Phone, Shield } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { supabase } from '../lib/supabase';
 import { apiFetch } from '../lib/api';
 
 export default function SignupPage() {
@@ -38,19 +39,24 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
+      // Sign up via Vercel API (auto-confirms email, creates DB profile)
       const res = await apiFetch('/api/auth/signup', {
         method: 'POST',
-        body: JSON.stringify({ name, email, phone, password }),
+        body: JSON.stringify({ email, password, name, phone })
       });
-
       const data = await res.json();
+      
+      if (!res.ok) throw new Error(data.error || 'Signup failed');
 
-      if (!res.ok) {
-        throw new Error(data.message || 'Signup failed');
+      // Auto-login after signup
+      const { error: loginErr } = await supabase.auth.signInWithPassword({ email, password });
+      if (loginErr) {
+        toast.success('Account created! Please log in.');
+        navigate('/login');
+      } else {
+        toast.success('Account created! Welcome aboard.');
+        navigate('/dashboard');
       }
-
-      toast.success('Account created successfully!');
-      navigate('/dashboard');
     } catch (err) {
       toast.error(err.message || 'Signup failed');
     } finally {

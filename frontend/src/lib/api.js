@@ -1,8 +1,9 @@
-// API base URL — uses Vite env var in production, proxy in dev
+// API base URL — Vite env var in production, proxy in dev v2
 const API_BASE = import.meta.env.VITE_API_URL || ''
 
 export async function apiFetch(path, options = {}) {
   const url = `${API_BASE}${path}`
+  console.debug('apiFetch:', url)
   const token = localStorage.getItem('admin_token')
   const session = localStorage.getItem('supabase_session')
 

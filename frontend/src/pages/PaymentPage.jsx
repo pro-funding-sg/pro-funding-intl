@@ -36,7 +36,7 @@ export default function PaymentPage() {
     );
   }
 
-  const upiString = `upi://pay?pa=${UPI_ID}&pn=${UPI_NAME}&am=${info.amount}&cu=INR`;
+  const upiString = `upi://pay?pa=${UPI_ID}&pn=${UPI_NAME}&am=${info.amount}`;
 
   const copyUPI = () => {
     navigator.clipboard.writeText(UPI_ID);
@@ -104,7 +104,7 @@ export default function PaymentPage() {
           <div className="inline-block p-4 bg-white rounded-2xl mb-4">
             <QRCode value={upiString} size={200} level="H" />
           </div>
-          <p className="text-gray-400 text-sm mb-2">Amount: <span className="text-gold-400 font-bold">₹{info.amount}</span></p>
+          <p className="text-gray-400 text-sm mb-2">Amount: <span className="text-gold-400 font-bold">${info.amount}</span></p>
           <div className="flex items-center justify-center gap-2">
             <span className="text-gray-300 text-sm font-mono">{UPI_ID}</span>
             <button

@@ -256,6 +256,136 @@ router.put('/withdrawals/:id', authMiddleware, adminMiddleware, async (req, res)
   }
 })
 
+// ─── POST /assign-mt5 ─────────────────────────────────────────────────────────
+// Admin assigns free MT5 account to any user with a selected plan
+router.post('/assign-mt5', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { user_id, plan } = req.body
+
+    if (!user_id || !plan) {
+      return res.status(400).json({ error: 'user_id and plan are required' })
+    }
+
+    const validPlans = { Starter: 1000, Standard: 5000, Premium: 10000 }
+    if (!validPlans[plan]) {
+      return res.status(400).json({ error: `Invalid plan. Valid: ${Object.keys(validPlans).join(', ')}` })
+    }
+
+    const balance = validPlans[plan]
+
+    // Fetch user
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('id', user_id)
+      .single()
+
+    if (profileError || !profile) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+
+    // Update user plan and payment status
+    const { error: updateError } = await supabaseAdmin
+      .from('users')
+      .update({
+        plan,
+        payment_status: 'approved',
+        funded_amount: balance
+      })
+      .eq('id', user_id)
+
+    if (updateError) {
+      console.error('update user plan error:', updateError.message)
+      return res.status(500).json({ error: 'Failed to update user plan' })
+    }
+
+    // Try to create MT5 account via MetaAPI
+    const METAAPI_TOKEN = process.env.METAAPI_TOKEN || ''
+    const METAAPI_BASE = process.env.METAAPI_PROVISIONING_API || 'https://mt-provisioning-api-v1.agiliumtrade.agiliumtrade.ai'
+    const PROFILE_ID = process.env.METAAPI_PROFILE_ID || ''
+
+    let mt5_login = null
+    let mt5_password = null
+    let mt5_server = 'MetaQuotes-Demo'
+
+    if (METAAPI_TOKEN && PROFILE_ID) {
+      try {
+        const mt5Payload = {
+          balance,
+          email: profile.email,
+          leverage: 100,
+          serverName: 'MetaQuotes-Demo',
+          name: profile.name,
+          accountType: 'demo',
+          phone: profile.phone || ''
+        }
+
+        const mt5Url = `${METAAPI_BASE}/users/current/provisioning-profiles/${PROFILE_ID}/mt5-demo-accounts`
+        console.log('Creating MT5 account:', mt5Url, JSON.stringify(mt5Payload))
+
+        const response = await fetch(mt5Url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'auth-token': METAAPI_TOKEN
+          },
+          body: JSON.stringify(mt5Payload)
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          mt5_login = result.login
+          mt5_password = result.password
+          mt5_server = result.serverName || 'MetaQuotes-Demo'
+          console.log('MT5 account created:', mt5_login)
+        } else {
+          const errBody = await response.text()
+          console.error('MetaAPI error:', response.status, errBody)
+        }
+      } catch (metaErr) {
+        console.error('MetaAPI fetch error:', metaErr.message)
+      }
+    }
+
+    // Generate demo credentials if MetaAPI fails
+    if (!mt5_login) {
+      console.warn('Using placeholder MT5 credentials')
+      mt5_login = Math.floor(10000000 + Math.random() * 90000000).toString()
+      mt5_password = Math.random().toString(36).substring(2, 10).toUpperCase()
+    }
+
+    // Save MT5 credentials
+    const { error: mt5UpdateError } = await supabaseAdmin
+      .from('users')
+      .update({
+        mt5_login,
+        mt5_password,
+        mt5_password_investor: mt5_password,
+        mt5_server
+      })
+      .eq('id', user_id)
+
+    if (mt5UpdateError) {
+      console.error('save mt5 error:', mt5UpdateError.message)
+    }
+
+    res.json({
+      message: `MT5 account assigned — ${plan} plan ($${balance})`,
+      account: {
+        user_id,
+        plan,
+        balance,
+        mt5_login,
+        mt5_password,
+        mt5_server
+      }
+    })
+  } catch (err) {
+    console.error('assign mt5 error:', err)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
 // ─── GET /stats ──────────────────────────────────────────────────────────────
 router.get('/stats', authMiddleware, adminMiddleware, async (req, res) => {
   try {

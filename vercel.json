@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "api/health.js", "use": "@vercel/node" },
+    { "src": "api/auth/login.js", "use": "@vercel/node" },
+    { "src": "api/auth/signup.js", "use": "@vercel/node" }
+  ],
+  "routes": [
+    { "src": "/api/health", "dest": "/api/health" },
+    { "src": "/api/auth/signup", "dest": "/api/auth/signup" },
+    { "src": "/api/auth/login", "dest": "/api/auth/login" }
+  ]
+}

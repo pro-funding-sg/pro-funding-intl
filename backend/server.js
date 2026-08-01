@@ -35,17 +35,20 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
-// Serve frontend static files
-const frontendDist = path.join(__dirname, '..', 'frontend', 'dist')
-app.use(express.static(frontendDist))
+// Serve frontend static files (local only, not on Vercel)
+if (!process.env.VERCEL) {
+  const frontendDist = path.join(__dirname, '..', 'frontend', 'dist')
+  app.use(express.static(frontendDist))
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendDist, 'index.html'))
+  })
+}
 
-// SPA fallback — all non-API routes serve index.html
-app.get('*', (req, res) => {
-  res.sendFile(path.join(frontendDist, 'index.html'))
-})
+// Only listen locally — Vercel serverless handles this automatically
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`)
+  })
+}
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`)
-  console.log(`Frontend: http://localhost:${PORT}`)
-  console.log(`Admin: http://localhost:${PORT}/admin`)
-})
+export default app

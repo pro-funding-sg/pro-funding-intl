@@ -1,0 +1,7 @@
+{
+  "name": "pro-funding-intl",
+  "private": true,
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.0"
+  }
+}

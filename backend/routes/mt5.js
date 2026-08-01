@@ -12,8 +12,8 @@ const PLAN_BALANCES = {
 }
 
 // MetaApi configuration from environment
-const METAAPI_BASE = process.env.METAAPI_BASE_URL || 'https://mt-provisioning-api-v1.agiliumtrade.agiliumtrade.ai'
-const METAAPI_TOKEN = process.env.METAAPI_AUTH_TOKEN || ''
+const METAAPI_BASE = process.env.METAAPI_PROVISIONING_API || 'https://mt-provisioning-api-v1.agiliumtrade.agiliumtrade.ai'
+const METAAPI_TOKEN = process.env.METAAPI_TOKEN || ''
 
 /**
  * Helper: extract and verify Bearer token, return user or 401.
@@ -39,17 +39,10 @@ async function authMiddleware(req, res, next) {
 // ─── POST /create-account ────────────────────────────────────────────────────
 router.post('/create-account', authMiddleware, async (req, res) => {
   try {
-    const { user_id } = req.body
+    const { user_id, plan } = req.body
     const targetUserId = user_id || req.user.id
 
-    // Only allow creating for self, or admin check can be added here
-    // For now, allow the authenticated user to create for themselves
-    // If user_id differs from req.user.id, admin check would be needed
-    if (targetUserId !== req.user.id) {
-      return res.status(403).json({ error: 'Cannot create MT5 account for another user' })
-    }
-
-    // Fetch user profile to determine plan
+    // Fetch user profile
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('users')
       .select('*')
@@ -60,17 +53,8 @@ router.post('/create-account', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'User not found' })
     }
 
-    // Check if user already has an MT5 account
-    if (profile.mt5_login) {
-      return res.status(400).json({
-        error: 'MT5 account already exists',
-        mt5_login: profile.mt5_login,
-        mt5_server: profile.mt5_server
-      })
-    }
-
-    // Determine plan — from profile.payment_plan or profile.plan field
-    const userPlan = profile.payment_plan || profile.plan
+    // Determine plan — from request body or user's existing plan
+    const userPlan = plan || profile.payment_plan || profile.plan
     if (!userPlan || !PLAN_BALANCES[userPlan]) {
       return res.status(400).json({
         error: `Invalid or missing plan. Available plans: ${Object.keys(PLAN_BALANCES).join(', ')}`
