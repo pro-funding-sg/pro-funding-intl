@@ -23,6 +23,10 @@ export default function AdminPage() {
   const [mt5Modal, setMt5Modal] = useState({ open: false, userId: null, userName: '' });
   const [mt5Plan, setMt5Plan] = useState('Standard');
   const [assigningMt5, setAssigningMt5] = useState(false);
+  const [manualMt5Modal, setManualMt5Modal] = useState({ open: false, userId: null, userName: '' });
+  const [manualLogin, setManualLogin] = useState('');
+  const [manualPass, setManualPass] = useState('');
+  const [manualServer, setManualServer] = useState('MetaQuotes-Demo');
   const intervalRef = useRef(null);
 
   const loadTabData = useCallback(async () => {
@@ -123,6 +127,26 @@ export default function AdminPage() {
       });
       if (!res.ok) throw new Error('Failed');
       toast.success('Payment rejected');
+      loadTabData();
+    } catch (err) { toast.error(err.message); }
+  };
+
+  const handleSetManualMt5 = async () => {
+    try {
+      const res = await apiFetch('/api/admin/set-mt5', {
+        method: 'POST',
+        body: JSON.stringify({
+          userId: manualMt5Modal.userId,
+          mt5_login: manualLogin,
+          mt5_password: manualPass,
+          mt5_server: manualServer,
+          plan: 'Standard'
+        }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      toast.success(`MT5 credentials saved for ${manualMt5Modal.userName}`);
+      setManualMt5Modal({ open: false, userId: null, userName: '' });
+      setManualLogin(''); setManualPass(''); setManualServer('MetaQuotes-Demo');
       loadTabData();
     } catch (err) { toast.error(err.message); }
   };
@@ -277,6 +301,11 @@ export default function AdminPage() {
                           title="Assign Free MT5">
                           <Server className="w-3 h-3" /> Free MT5
                         </button>
+                        <button onClick={() => { setManualMt5Modal({ open: true, userId: u.id, userName: u.name }); setManualLogin(u.mt5_login || ''); setManualPass(u.mt5_password || ''); setManualServer(u.mt5_server || 'MetaQuotes-Demo'); }}
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-400/10 text-blue-400 hover:bg-blue-400/20 transition-colors"
+                          title="Set Manual MT5 Credentials">
+                          <UserPlus className="w-3 h-3" /> Manual MT5
+                        </button>
                         {!u.mt5_login && (
                           <button onClick={() => handleCreateMT5(u.id)}
                             className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-400/10 text-blue-400 hover:bg-blue-400/20 transition-colors"
@@ -350,54 +379,138 @@ export default function AdminPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-navy-600">
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Email</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Amount</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">UPI</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Status</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Date</th>
-                  <th className="text-left py-3 px-4 text-gray-400 font-medium">Action</th>
+                  <th className="text-left py-3 px-3 text-gray-400 font-medium">User</th>
+                  <th className="text-left py-3 px-3 text-gray-400 font-medium">Email</th>
+                  <th className="text-left py-3 px-3 text-gray-400 font-medium">Amount</th>
+                  <th className="text-left py-3 px-3 text-gray-400 font-medium">UPI / Bank</th>
+                  <th className="text-left py-3 px-3 text-gray-400 font-medium">Status</th>
+                  <th className="text-left py-3 px-3 text-gray-400 font-medium">Ref</th>
+                  <th className="text-left py-3 px-3 text-gray-400 font-medium">Date</th>
+                  <th className="text-left py-3 px-3 text-gray-400 font-medium">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {withdrawals.map((w) => (
                   <tr key={w.id} className="border-b border-navy-700/50 hover:bg-navy-700/30">
-                    <td className="py-3 px-4 text-gray-400">{w.email || w.users?.email}</td>
-                    <td className="py-3 px-4 text-white font-semibold">${w.amount}</td>
-                    <td className="py-3 px-4 text-gray-400 font-mono text-xs">{w.upi}</td>
-                    <td className="py-3 px-4">{badge(w.status)}</td>
-                    <td className="py-3 px-4 text-gray-400 text-xs">{w.created_at ? new Date(w.created_at).toLocaleDateString() : '—'}</td>
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-3 text-white text-xs font-medium">{w.user_name || '—'}</td>
+                    <td className="py-3 px-3 text-gray-400 text-xs">{w.email || '—'}</td>
+                    <td className="py-3 px-3 text-white font-semibold">${w.amount}</td>
+                    <td className="py-3 px-3">
+                      {w.upi_id ? (
+                        <div>
+                          <span className="text-gold-400 font-mono text-xs">{w.upi_id}</span>
+                          {w.bank_details && <p className="text-gray-500 text-[10px] mt-0.5">{w.bank_details}</p>}
+                        </div>
+                      ) : (
+                        <span className="text-gray-500 text-xs">{w.bank_details || '—'}</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-3">{badge(w.status)}</td>
+                    <td className="py-3 px-3 text-gray-500 font-mono text-[10px]">{w.transaction_ref || '—'}</td>
+                    <td className="py-3 px-3 text-gray-400 text-xs">{w.created_at ? new Date(w.created_at).toLocaleDateString() : '—'}</td>
+                    <td className="py-3 px-3">
                       {w.status === 'pending' && (
-                        <button onClick={() => setMarkPaidModal({ open: true, id: w.id })}
+                        <button onClick={() => setMarkPaidModal({ open: true, id: w.id, amount: w.amount, upi: w.upi_id, bank: w.bank_details })}
                           className="btn-primary text-xs px-3 py-1.5 inline-flex items-center gap-1">
-                          <CheckCircle className="w-3 h-3" /> Mark Paid
+                          <CheckCircle className="w-3 h-3" /> Send & Mark Paid
                         </button>
+                      )}
+                      {w.status === 'approved' && (
+                        <button onClick={() => setMarkPaidModal({ open: true, id: w.id, amount: w.amount, upi: w.upi_id, bank: w.bank_details })}
+                          className="bg-green-400 text-navy-900 text-xs px-3 py-1.5 rounded-lg font-semibold inline-flex items-center gap-1 hover:bg-green-300 transition-colors">
+                          <CheckCircle className="w-3 h-3" /> Complete Payout
+                        </button>
+                      )}
+                      {w.status === 'paid' && (
+                        <span className="text-green-400 text-xs flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" /> Paid
+                        </span>
                       )}
                     </td>
                   </tr>
                 ))}
                 {withdrawals.length === 0 && (
-                  <tr><td colSpan={6} className="py-8 text-center text-gray-500">No withdrawal requests yet.</td></tr>
+                  <tr><td colSpan={8} className="py-8 text-center text-gray-500">No withdrawal requests yet.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
         )}
 
-        {/* Mark Paid Modal */}
+        {/* Mark Paid/Process Payout Modal */}
         {markPaidModal.open && (
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
             <div className="card p-6 w-full max-w-md">
-              <h3 className="text-white font-bold font-poppins text-lg mb-4">Mark Withdrawal as Paid</h3>
+              <h3 className="text-white font-bold font-poppins text-lg mb-4">
+                <DollarSign className="w-5 h-5 text-gold-400 inline mr-1" />
+                Process Payout to Bank/UPI
+              </h3>
+
+              {/* Payment details */}
+              <div className="bg-navy-900 rounded-lg p-4 mb-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Amount:</span>
+                  <span className="text-gold-400 font-bold">${markPaidModal.amount}</span>
+                </div>
+                {markPaidModal.upi && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">UPI ID:</span>
+                    <span className="text-white font-mono text-xs">{markPaidModal.upi}</span>
+                  </div>
+                )}
+                {markPaidModal.bank && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Bank Details:</span>
+                    <span className="text-white text-xs">{markPaidModal.bank}</span>
+                  </div>
+                )}
+              </div>
+
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">Transaction Reference</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1.5">Transaction Reference (UPI/Bank TXN ID)</label>
                 <input type="text" value={transactionRef} onChange={(e) => setTransactionRef(e.target.value)}
-                  placeholder="Enter transaction ID"
+                  placeholder="e.g. UPI123456789 or BANK/IMPS/REF001"
                   className="w-full bg-navy-700 border border-navy-600 rounded-lg py-3 px-4 text-white placeholder-gray-500 focus:outline-none focus:border-gold-400 transition-colors" />
               </div>
               <div className="flex gap-3">
                 <button onClick={handleMarkPaid} className="btn-primary flex-1 py-2.5 font-semibold">Confirm</button>
                 <button onClick={() => { setMarkPaidModal({ open: false, id: null }); setTransactionRef(''); }}
+                  className="btn-outline flex-1 py-2.5">Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Manual MT5 Modal */}
+        {manualMt5Modal.open && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            <div className="card p-6 w-full max-w-md">
+              <h3 className="text-white font-bold font-poppins text-lg mb-2">
+                <Server className="w-5 h-5 text-blue-400 inline mr-1" />
+                Set Manual MT5 Credentials
+              </h3>
+              <p className="text-gray-400 text-sm mb-4">User: <span className="text-white">{manualMt5Modal.userName}</span></p>
+              <div className="space-y-3 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">MT5 Login</label>
+                  <input value={manualLogin} onChange={e => setManualLogin(e.target.value)}
+                    placeholder="e.g. 86053193" className="w-full bg-navy-700 border border-navy-600 rounded-lg py-2.5 px-4 text-white text-sm focus:outline-none focus:border-blue-400 transition-colors" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">MT5 Password</label>
+                  <input type="text" value={manualPass} onChange={e => setManualPass(e.target.value)}
+                    placeholder="e.g. 2y8kpft" className="w-full bg-navy-700 border border-navy-600 rounded-lg py-2.5 px-4 text-white text-sm focus:outline-none focus:border-blue-400 transition-colors" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">MT5 Server</label>
+                  <input value={manualServer} onChange={e => setManualServer(e.target.value)}
+                    placeholder="e.g. MetaQuotes-Demo" className="w-full bg-navy-700 border border-navy-600 rounded-lg py-2.5 px-4 text-white text-sm focus:outline-none focus:border-blue-400 transition-colors" />
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={handleSetManualMt5}
+                  className="btn-primary flex-1 py-2.5 font-semibold">Save Credentials</button>
+                <button onClick={() => { setManualMt5Modal({ open: false, userId: null, userName: '' }); setManualLogin(''); setManualPass(''); }}
                   className="btn-outline flex-1 py-2.5">Cancel</button>
               </div>
             </div>

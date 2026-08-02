@@ -25,6 +25,8 @@ export default function DashboardPage() {
   const [withdrawal, setWithdrawal] = useState({ amount: '', upi: '', bankDetails: '' });
   const [withdrawing, setWithdrawing] = useState(false);
   const [history, setHistory] = useState([]);
+  const [metrics, setMetrics] = useState(null);
+  const [showWithdraw, setShowWithdraw] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
@@ -44,9 +46,19 @@ export default function DashboardPage() {
 
   const fetchProfile = async () => {
     try {
-      const res = await apiFetch('/api/users/profile');
-      const data = await res.json();
-      if (res.ok) setProfile(data);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      // Query Supabase directly — NO API call, NO CORS issues
+      const { data: profile, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error) { console.error('Supabase fetch error:', error); return; }
+      console.log('Profile loaded (direct):', profile);
+      setProfile(profile);
     } catch (err) {
       console.error('Failed to fetch profile:', err);
     }
@@ -54,13 +66,38 @@ export default function DashboardPage() {
 
   const fetchWithdrawals = async () => {
     try {
-      const res = await apiFetch('/api/withdrawals/history');
-      const data = await res.json();
-      if (res.ok) setHistory(data.withdrawals || []);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data, error } = await supabase
+        .from('withdrawals')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false });
+      if (!error) setHistory(data || []);
     } catch (err) {
       console.error('Failed to fetch withdrawals:', err);
     }
   };
+
+  const fetchMetrics = async () => {
+    if (!profile?.mt5_login) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await apiFetch(`/api/mt5/metrics?mt5_login=${profile.mt5_login}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      });
+      if (res.ok) { const d = await res.json(); setMetrics(d); }
+    } catch (e) { /* silent */ }
+  };
+
+  // Poll metrics every 15 seconds
+  useEffect(() => {
+    if (!profile?.mt5_login) return;
+    fetchMetrics();
+    const interval = setInterval(fetchMetrics, 15000);
+    return () => clearInterval(interval);
+  }, [profile?.mt5_login]);
 
   const handleWithdrawalSubmit = async (e) => {
     e.preventDefault();
@@ -175,8 +212,10 @@ export default function DashboardPage() {
                   {statusBadge(profile?.payment_status)}
                 </div>
                 <div>
-                  <p className="text-gray-500 text-xs uppercase tracking-wider">Funded Amount</p>
-                  <p className="text-gold-400 font-bold text-xl font-poppins">{profile?.funded_amount || '$0'}</p>
+                  <p className="text-gray-500 text-xs uppercase tracking-wider">Funded Balance</p>
+                  <p className="text-gold-400 font-bold text-xl font-poppins">
+                    ${({ Starter: 1000, Standard: 5000, Premium: 10000 })[profile?.plan]?.toLocaleString() || '0'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -192,51 +231,75 @@ export default function DashboardPage() {
                   <p className="text-gray-400 text-sm">Your trading credentials</p>
                 </div>
               </div>
-              {profile?.mt5_approved ? (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-gray-500 text-xs uppercase tracking-wider">Login</p>
-                    <p className="text-white font-mono">{profile.mt5_login}</p>
+              {profile?.mt5_login ? (
+                <div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-3">
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider">Login</p>
+                      <p className="text-gold-400 font-mono font-bold text-lg">{profile.mt5_login}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider">Password</p>
+                      <p className="text-gold-400 font-mono font-bold text-lg">{profile.mt5_password}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider">Server</p>
+                      <p className="text-gold-400 font-mono font-bold text-lg">{profile.mt5_server || 'MetaQuotes-Demo'}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-gray-500 text-xs uppercase tracking-wider">Password</p>
-                    <p className="text-white font-mono">{profile.mt5_password}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500 text-xs uppercase tracking-wider">Server</p>
-                    <p className="text-white font-mono">{profile.mt5_server}</p>
-                  </div>
+                  <p className="text-gray-500 text-xs mt-2">Connect via MetaTrader 5 mobile or desktop app</p>
                 </div>
               ) : (
                 <p className="text-gray-500 text-sm">Complete payment first to receive MT5 credentials.</p>
               )}
             </div>
 
-            {/* Rules Summary */}
+            {/* Trading Rules */}
             <div className="card p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-lg bg-gold-400/10 flex items-center justify-center">
                   <Shield className="w-5 h-5 text-gold-400" />
                 </div>
                 <div>
-                  <h3 className="text-white font-semibold font-poppins">Rules Summary</h3>
-                  <p className="text-gray-400 text-sm">Key evaluation parameters</p>
+                  <h3 className="text-white font-semibold font-poppins">Trading Rules</h3>
+                  <p className="text-gray-400 text-sm">Evaluation parameters for your funded account</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {[
-                  { icon: Target, label: 'Profit Target', value: '8%' },
-                  { icon: AlertTriangle, label: 'Daily DD', value: '5%' },
-                  { icon: Shield, label: 'Max DD', value: '10%' },
-                  { icon: Clock, label: 'Time Limit', value: 'None' },
-                ].map((r, i) => (
-                  <div key={i} className="text-center p-3 rounded-lg bg-navy-700/50">
-                    <r.icon className="w-5 h-5 text-gold-400 mx-auto mb-2" />
-                    <p className="text-gray-500 text-xs">{r.label}</p>
-                    <p className="text-white font-bold">{r.value}</p>
-                  </div>
-                ))}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+                <div className="p-3 rounded-lg bg-navy-700/50">
+                  <p className="text-gray-400 text-xs mb-1">Profit Target</p>
+                  <p className="text-gold-400 font-bold text-lg">8%</p>
+                  <p className="text-gray-600 text-[10px]">Target to pass evaluation</p>
+                </div>
+                <div className="p-3 rounded-lg bg-navy-700/50">
+                  <p className="text-gray-400 text-xs mb-1">Daily Drawdown</p>
+                  <p className="text-red-400 font-bold text-lg">5%</p>
+                  <p className="text-gray-600 text-[10px]">Max per-day loss</p>
+                </div>
+                <div className="p-3 rounded-lg bg-navy-700/50">
+                  <p className="text-gray-400 text-xs mb-1">Max Drawdown</p>
+                  <p className="text-red-400 font-bold text-lg">10%</p>
+                  <p className="text-gray-600 text-[10px]">Overall account limit</p>
+                </div>
+                <div className="p-3 rounded-lg bg-navy-700/50">
+                  <p className="text-gray-400 text-xs mb-1">Time Limit</p>
+                  <p className="text-green-400 font-bold text-lg">None</p>
+                  <p className="text-gray-600 text-[10px]">Trade at your own pace</p>
+                </div>
+                <div className="p-3 rounded-lg bg-navy-700/50">
+                  <p className="text-gray-400 text-xs mb-1">Profit Split</p>
+                  <p className="text-gold-400 font-bold text-lg">80%</p>
+                  <p className="text-gray-600 text-[10px]">You keep the majority</p>
+                </div>
+                <div className="p-3 rounded-lg bg-navy-700/50">
+                  <p className="text-gray-400 text-xs mb-1">Platform</p>
+                  <p className="text-white font-bold text-lg">MT5</p>
+                  <p className="text-gray-600 text-[10px]">MetaTrader 5</p>
+                </div>
               </div>
+              <p className="text-gray-500 text-xs mt-4 border-t border-navy-700 pt-3">
+                Trade on MetaTrader 5 to meet the profit target. Withdrawals available once you pass.
+              </p>
             </div>
           </div>
         )}

@@ -9,7 +9,8 @@ import userRoutes from './routes/users.js'
 import paymentRoutes from './routes/payments.js'
 import withdrawalRoutes from './routes/withdrawals.js'
 import adminRoutes from './routes/admin.js'
-import mt5Routes from './routes/mt5.js'
+import analyticsRoutes from "./routes/analytics.js"
+import mt5Routes from "./routes/mt5.js"
 
 dotenv.config()
 
@@ -28,7 +29,8 @@ app.use('/api/users', userRoutes)
 app.use('/api/payments', paymentRoutes)
 app.use('/api/withdrawals', withdrawalRoutes)
 app.use('/api/admin', adminRoutes)
-app.use('/api/mt5', mt5Routes)
+app.use("/api/analytics", analyticsRoutes)
+app.use("/api/mt5", mt5Routes)
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -360,6 +360,32 @@ export default function LandingPage() {
       {/* ======== FAQ ======== */}
       <FAQSection />
 
+      {/* ======== REFERRAL ======== */}
+      <section className="py-20 bg-navy-800/30">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <h2 className="section-title">Refer a Trader, Earn ₹200</h2>
+          <p className="section-subtitle">Invite fellow traders to Pro Funding International. For every trader who signs up and takes a challenge, we credit ₹200 to your account.</p>
+          <div className="card p-6 inline-block">
+            <p className="text-gray-400 text-sm mb-2">Share your referral link:</p>
+            <p className="text-gold-400 font-mono text-lg bg-navy-900 rounded-lg py-3 px-6 select-all tracking-wide">
+              pro-funding-intl.surge.sh/?ref=YOURCODE
+            </p>
+            <div className="flex flex-wrap gap-2 justify-center mt-4">
+              <a href={`https://wa.me/?text=Join%20Pro%20Funding%20International%20-%20India's%20most%20affordable%20prop%20firm.%20Only%20₹800%20for%20a%20$10,000%20funded%20account.%20${encodeURIComponent('https://pro-funding-intl.surge.sh')}`}
+                target="_blank" rel="noopener"
+                className="flex items-center gap-1 px-3 py-1.5 bg-green-600/20 text-green-400 rounded-full text-xs font-medium hover:bg-green-600/30 transition-colors">
+                Share on WhatsApp
+              </a>
+              <a href={`https://t.me/share/url?url=${encodeURIComponent('https://pro-funding-intl.surge.sh')}&text=${encodeURIComponent("India's cheapest prop firm! ₹800 → $10,000 funded. 80% profit split.")}`}
+                target="_blank" rel="noopener"
+                className="flex items-center gap-1 px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-full text-xs font-medium hover:bg-blue-500/30 transition-colors">
+                Share on Telegram
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ======== CONTACT ======== */}
       <section id="contact" className="py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">

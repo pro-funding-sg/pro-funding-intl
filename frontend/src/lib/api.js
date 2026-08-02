@@ -1,11 +1,24 @@
 // API base URL — Vite env var in production, proxy in dev v2
 const API_BASE = import.meta.env.VITE_API_URL || ''
 
+const SUPABASE_URL = 'https://upcbhnszdtalizykmrpf.supabase.co'
+
+function getSupabaseToken() {
+  // Check all possible Supabase token storage keys
+  const keys = Object.keys(localStorage).filter(k => k.includes('supabase') || k.includes('sb-'))
+  for (const key of keys) {
+    try {
+      const data = JSON.parse(localStorage.getItem(key))
+      if (data?.access_token) return data.access_token
+      if (data?.currentSession?.access_token) return data.currentSession.access_token
+    } catch (e) {}
+  }
+  return null
+}
+
 export async function apiFetch(path, options = {}) {
   const url = `${API_BASE}${path}`
   console.debug('apiFetch:', url)
-  const token = localStorage.getItem('admin_token')
-  const session = localStorage.getItem('supabase_session')
 
   const headers = {
     'Content-Type': 'application/json',
@@ -13,17 +26,15 @@ export async function apiFetch(path, options = {}) {
   }
 
   // Attach admin token if available
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-  }
-  // Attach supabase session if available
-  if (session) {
-    try {
-      const s = JSON.parse(session)
-      if (s.access_token) {
-        headers['Authorization'] = `Bearer ${s.access_token}`
-      }
-    } catch (e) {}
+  const adminToken = localStorage.getItem('admin_token')
+  if (adminToken) {
+    headers['Authorization'] = `Bearer ${adminToken}`
+  } else {
+    // Try Supabase session token (from auth)
+    const sbToken = getSupabaseToken()
+    if (sbToken) {
+      headers['Authorization'] = `Bearer ${sbToken}`
+    }
   }
 
   return fetch(url, { ...options, headers })

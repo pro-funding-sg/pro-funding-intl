@@ -1,13 +1,18 @@
 {
-  "version": 2,
-  "builds": [
-    { "src": "api/health.js", "use": "@vercel/node" },
-    { "src": "api/auth/login.js", "use": "@vercel/node" },
-    { "src": "api/auth/signup.js", "use": "@vercel/node" }
+  "functions": {
+    "api/**/*.js": { "memory": 128 }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1.js" }
   ],
-  "routes": [
-    { "src": "/api/health", "dest": "/api/health" },
-    { "src": "/api/auth/signup", "dest": "/api/auth/signup" },
-    { "src": "/api/auth/login", "dest": "/api/auth/login" }
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+      ]
+    }
   ]
 }

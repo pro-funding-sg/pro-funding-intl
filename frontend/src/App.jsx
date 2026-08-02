@@ -9,6 +9,8 @@ import AdminLoginPage from './pages/AdminLoginPage'
 import PaymentPage from './pages/PaymentPage'
 import RulesPage from './pages/RulesPage'
 import FAQPage from './pages/FAQPage'
+import BlogPage from './pages/BlogPage'
+import WhatsAppButton from './components/WhatsAppButton'
 
 function AppLayout() {
   const location = useLocation()
@@ -29,7 +31,9 @@ function AppLayout() {
         <Route path="/payment/:plan" element={<PaymentPage />} />
         <Route path="/rules" element={<RulesPage />} />
         <Route path="/faq" element={<FAQPage />} />
+        <Route path="/blog/:slug" element={<BlogPage />} />
       </Routes>
+      {showNavbar && <WhatsAppButton />}
     </>
   )
 }
